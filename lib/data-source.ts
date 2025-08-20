@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { prisma as prismaClient } from "@/lib/prisma";
+import prismaClient from "@/lib/prisma";
 
 type Id = string;
 type User = {
@@ -32,8 +32,6 @@ type Prompt = {
 };
 
 export const dataSource = {
-  isMock: false,
-
   // Auth & user
   async findUserByPhone(phone: string): Promise<User | null> {
     const u = await prismaClient.user.findFirst({ where: { phone } });

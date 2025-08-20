@@ -2,36 +2,25 @@ import type { NextAuthOptions } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { dataSource } from "@/lib/data-source";
-
-export const useDb = !!process.env.DATABASE_URL;
-
-let adapter: any = undefined;
-if (useDb) {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { PrismaAdapter } = require("@next-auth/prisma-adapter");
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { prisma } = require("@/lib/prisma");
-  adapter = PrismaAdapter(prisma);
-}
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
 
 export const authOptions: NextAuthOptions = {
-  adapter,
-  session: { strategy: "database" },
+  session: { strategy: "jwt" },
   secret:
     process.env.NEXTAUTH_SECRET ||
     (process.env.NODE_ENV === "development"
       ? "dev-secret-change-me"
       : undefined),
   callbacks: {
-    async jwt({ token, user }) {
+    jwt: async ({ token, user }) => {
       if (user) {
-        (token as any).id = (user as any).id;
+        token.id = user.id;
       }
       return token;
     },
-    async session({ session, token }) {
-      if (session.user && token) {
-        (session.user as any).id = (token as any).id as string;
+    session: async ({ session, token }) => {
+      if (token) {
+        session.user.id = token.id as string;
       }
       return session;
     },
