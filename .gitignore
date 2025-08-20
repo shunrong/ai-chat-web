@@ -1,2 +1,23 @@
-node_modules
-.env*
+# Next.js
+.next/
+out/
+
+# Build outputs
+build/
+dist/
+
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+.env.production.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
