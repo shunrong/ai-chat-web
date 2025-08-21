@@ -1,7 +1,7 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
-import { memo } from "react";
+import { memo, useState } from "react";
 
 // 预定义插件，避免每次渲染都创建新数组
 const remarkPlugins = [remarkGfm];
@@ -130,25 +130,111 @@ const components = {
 const MessageBubble = memo(function MessageBubble({
   role,
   content,
+  reasoning,
+  model,
 }: {
   role: "user" | "assistant" | "system";
   content: string;
+  reasoning?: string;
+  model?: string;
 }) {
+  // 简化逻辑：有 reasoning 但没有 content 就是正在思考
+  const isThinking = Boolean(reasoning !== undefined && !content);
   const isAssistant = role === "assistant";
+  const [showReasoning, setShowReasoning] = useState(isThinking);
 
   return (
     <div className="flex gap-3">
-      <div className="max-w-3xl prose prose-slate dark:prose-invert">
-        <div className="text-sm text-gray-500 mb-1">
-          {isAssistant ? "DeepSeek" : "你"}
+      <div className="flex-1 max-w-none">
+        {/* 标题栏 */}
+        <div className="text-sm text-gray-500 mb-2 flex items-center gap-2">
+          <span>{isAssistant ? "DeepSeek" : "你"}</span>
+          {model === "deepseek-reasoner" && (
+            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+              🧠 推理模式
+            </span>
+          )}
         </div>
-        <ReactMarkdown
-          remarkPlugins={remarkPlugins}
-          rehypePlugins={rehypePlugins}
-          components={components}
-        >
-          {content}
-        </ReactMarkdown>
+
+        {/* 思考过程 */}
+        {isAssistant && reasoning !== undefined && (
+          <div className="mb-4">
+            {isThinking ? (
+              // 正在思考中的状态
+              <div
+                className="flex items-center gap-2 text-sm text-purple-600 dark:text-purple-400"
+                onClick={() => setShowReasoning(!showReasoning)}
+              >
+                <div className="flex items-center gap-1">
+                  <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-base">🧐</span>
+                </div>
+                <span className="font-medium">正在深度思考中...</span>
+                <div className="flex gap-1">
+                  <div
+                    className="w-1 h-1 bg-purple-600 rounded-full animate-bounce"
+                    style={{ animationDelay: "0ms" }}
+                  ></div>
+                  <div
+                    className="w-1 h-1 bg-purple-600 rounded-full animate-bounce"
+                    style={{ animationDelay: "150ms" }}
+                  ></div>
+                  <div
+                    className="w-1 h-1 bg-purple-600 rounded-full animate-bounce"
+                    style={{ animationDelay: "300ms" }}
+                  ></div>
+                </div>
+              </div>
+            ) : (
+              // 思考完成，显示可切换的按钮
+              <>
+                <button
+                  onClick={() => setShowReasoning(!showReasoning)}
+                  className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                >
+                  <span className="text-base">🧐</span>
+                  <span>{showReasoning ? "隐藏思考过程" : "查看思考过程"}</span>
+                  <span
+                    className={`transform transition-transform ${
+                      showReasoning ? "rotate-180" : ""
+                    }`}
+                  >
+                    ▼
+                  </span>
+                </button>
+              </>
+            )}
+            {isAssistant && showReasoning && (
+              <div className="mt-3 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+                <div className="text-sm text-blue-700 dark:text-blue-300 mb-2 font-medium">
+                  🧐 AI 的思考过程：
+                </div>
+                <div className="prose prose-sm dark:prose-invert max-w-none">
+                  <ReactMarkdown
+                    remarkPlugins={remarkPlugins}
+                    rehypePlugins={rehypePlugins}
+                    components={components}
+                  >
+                    {reasoning}
+                  </ReactMarkdown>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 最终回答 */}
+        {content && (
+          <div className="prose prose-slate dark:prose-invert max-w-none">
+            <ReactMarkdown
+              remarkPlugins={remarkPlugins}
+              rehypePlugins={rehypePlugins}
+              components={components}
+            >
+              {content}
+            </ReactMarkdown>
+          </div>
+        )}
       </div>
     </div>
   );

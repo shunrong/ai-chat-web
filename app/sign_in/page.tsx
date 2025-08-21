@@ -98,11 +98,7 @@ export default function SignInPage() {
                   });
                   if (!res.ok) return alert("发送失败");
                   const data = await res.json();
-                  alert(
-                    process.env.NODE_ENV === "development" && data.code
-                      ? `验证码已发送(开发环境Mock): ${data.code}`
-                      : "验证码已发送"
-                  );
+                  alert("验证码已发送");
                 }}
               >
                 发送验证码

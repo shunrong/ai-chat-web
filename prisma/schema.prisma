@@ -73,6 +73,8 @@ model Message {
   chatId    String
   role      String // user | assistant | system
   content   String   @db.Text
+  reasoning String?  @db.Text // 推理过程（仅推理模型有）
+  model     String? // 使用的模型类型（chat/reasoning）
   createdAt DateTime @default(now())
   chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
 }

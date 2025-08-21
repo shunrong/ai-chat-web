@@ -5,11 +5,7 @@ import { dataSource } from "@/lib/data-source";
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
-  secret:
-    process.env.NEXTAUTH_SECRET ||
-    (process.env.NODE_ENV === "development"
-      ? "dev-secret-change-me"
-      : undefined),
+  secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
     jwt: async ({ token, user }) => {
       if (user) {

@@ -6,3 +6,12 @@ export function createDeepseekClient() {
   if (!apiKey) throw new Error("Missing DEEPSEEK_API_KEY in environment");
   return new OpenAI({ apiKey, baseURL });
 }
+
+// DeepSeek 模型类型
+export const DEEPSEEK_MODELS = {
+  CHAT: "deepseek-chat",
+  REASONING: "deepseek-reasoner", // 推理模型
+} as const;
+
+export type DeepSeekModel =
+  (typeof DEEPSEEK_MODELS)[keyof typeof DEEPSEEK_MODELS];

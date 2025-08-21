@@ -20,6 +20,8 @@ type Message = {
   chatId: Id;
   role: "user" | "assistant" | "system";
   content: string;
+  reasoning?: string | null;
+  model?: string | null;
   createdAt: Date;
 };
 type Prompt = {
@@ -59,6 +61,40 @@ export const dataSource = {
       update: { expires },
       create: { identifier: phone, token: code, expires },
     });
+  },
+
+  // 新增：获取或创建验证码（复用已有的）
+  async getOrCreateOtp(
+    phone: string
+  ): Promise<{ code: string; isNew: boolean }> {
+    // 先查找是否有未过期的验证码
+    const existingToken = await prismaClient.verificationToken.findFirst({
+      where: {
+        identifier: phone,
+        expires: { gt: new Date() },
+      },
+    });
+
+    if (existingToken) {
+      // 有未过期的验证码，重置过期时间
+      const newExpires = new Date(Date.now() + 10 * 60 * 1000); // 10分钟
+      await prismaClient.verificationToken.update({
+        where: {
+          identifier_token: {
+            identifier: phone,
+            token: existingToken.token,
+          },
+        },
+        data: { expires: newExpires },
+      });
+      return { code: existingToken.token, isNew: false };
+    } else {
+      // 没有未过期的验证码，生成新的
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expires = new Date(Date.now() + 10 * 60 * 1000);
+      await this.setOtp(phone, code, expires);
+      return { code, isNew: true };
+    }
   },
 
   async verifyAndConsumeOtp(phone: string, code: string): Promise<boolean> {
@@ -149,14 +185,22 @@ export const dataSource = {
   async createAssistantMessage(
     userId: string,
     chatId: string,
-    content: string
+    content: string,
+    reasoning?: string,
+    model?: string
   ): Promise<Message> {
     const chat = await prismaClient.chat.findFirst({
       where: { id: chatId, userId },
     });
     if (!chat) throw new Error("Not Found");
     const msg = await prismaClient.message.create({
-      data: { chatId: chat.id, role: "assistant", content },
+      data: {
+        chatId: chat.id,
+        role: "assistant",
+        content,
+        reasoning,
+        model,
+      },
     });
     await prismaClient.chat.update({
       where: { id: chat.id },
