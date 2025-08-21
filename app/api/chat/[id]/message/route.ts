@@ -7,6 +7,7 @@ import {
   DEEPSEEK_MODELS,
   type DeepSeekModel,
 } from "@/lib/deepseek";
+import { WebSearchService } from "@/lib/web-search";
 
 export async function POST(
   req: NextRequest,
@@ -15,7 +16,11 @@ export async function POST(
   const session = await getServerSession(authOptions);
   if (!session?.user?.id)
     return new NextResponse("Unauthorized", { status: 401 });
-  const { content, useReasoning = false } = await req.json();
+  const {
+    content,
+    useReasoning = false,
+    useWebSearch = false,
+  } = await req.json();
   if (!content) return new NextResponse("Bad Request", { status: 400 });
 
   try {
@@ -42,12 +47,44 @@ export async function POST(
           role: m.role as any,
           content: m.content,
         }));
-        history.push({ role: "user" as const, content });
+
+        // 如果需要联网搜索，先进行搜索
+        let searchContext = "";
+        let searchResults = null;
+        if (useWebSearch) {
+          try {
+            const webSearch = new WebSearchService();
+            const searchResponse = await webSearch.search(content);
+            searchResults = searchResponse;
+            searchContext = webSearch.formatSearchContext(searchResponse);
+            console.log(`[DEBUG] 搜索结果: ${searchResponse.total} 条`);
+
+            // 先发送搜索结果给前端
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: "search_results",
+                  data: searchResults,
+                })}\n\n`
+              )
+            );
+          } catch (error) {
+            console.error("联网搜索失败:", error);
+            // 搜索失败不影响正常聊天
+          }
+        }
+
+        // 如果有联网搜索结果，将其作为上下文添加
+        const userMessage = searchContext
+          ? `${content}\n\n联网搜索信息:\n${searchContext}`
+          : content;
+
+        history.push({ role: "user" as const, content: userMessage });
         const model: DeepSeekModel = useReasoning
           ? DEEPSEEK_MODELS.REASONING
           : DEEPSEEK_MODELS.CHAT;
 
-        console.log(`[DEBUG] 使用模型: ${model}`);
+        console.log(`[DEBUG] 使用模型: ${model}, 联网搜索: ${useWebSearch}`);
 
         const completion = await client.chat.completions.create({
           model,

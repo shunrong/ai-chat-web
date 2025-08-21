@@ -10,12 +10,14 @@ export const authOptions: NextAuthOptions = {
     jwt: async ({ token, user }) => {
       if (user) {
         token.id = user.id;
+        token.phone = (user as any).phone;
       }
       return token;
     },
     session: async ({ session, token }) => {
       if (token) {
         session.user.id = token.id as string;
+        session.user.phone = token.phone as string;
       }
       return session;
     },
@@ -32,7 +34,11 @@ export const authOptions: NextAuthOptions = {
         if (!user || !user.passwordHash) return null;
         const ok = await bcrypt.compare(password, user.passwordHash);
         if (!ok) return null;
-        return { id: user.id, name: user.name || user.phone || "用户" } as any;
+        return {
+          id: user.id,
+          name: user.name || user.phone || "用户",
+          phone: user.phone,
+        } as any;
       },
     }),
     Credentials({
@@ -46,7 +52,7 @@ export const authOptions: NextAuthOptions = {
         const ok = await dataSource.verifyAndConsumeOtp(phone, code);
         if (!ok) return null;
         const user = await dataSource.upsertUserByPhone(phone);
-        return { id: user.id, name: user.name || phone } as any;
+        return { id: user.id, name: user.name || phone, phone: phone } as any;
       },
     }),
   ],
